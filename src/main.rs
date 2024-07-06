@@ -49,11 +49,17 @@ fn main() -> Result<()> {
     info!("CLI launching");
 
     let db = SharedMimeInfo::new();
+    info!("guessing type from {}", opts.file.display());
     let guess = db.guess_mime_type().path(&opts.file).guess();
     let mime = guess.mime_type();
     println!("{}: {}", opts.file.display(), mime);
     if guess.uncertain() {
         println!("{}: guess is uncertain", opts.file.display());
+    }
+    if let Some(parents) = db.get_parents(mime) {
+        for supertype in parents {
+            println!("parent: {}", supertype);
+        }
     }
 
     Ok(())
