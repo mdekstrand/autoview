@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{Args, Parser};
 use log::*;
+use mime::Mime;
 use stderrlog::StdErrLog;
 use xdg_mime::SharedMimeInfo;
 
@@ -59,6 +60,17 @@ fn main() -> Result<()> {
     if let Some(parents) = db.get_parents(mime) {
         for supertype in parents {
             println!("parent: {}", supertype);
+        }
+    }
+    let text: Mime = "text/plain".parse()?;
+    if db.mime_type_subclass(mime, &text) {
+        println!("{}: is text file", opts.file.display());
+    }
+
+    if let Some(name) = opts.file.file_name() {
+        let fntypes = db.get_mime_types_from_file_name(name.to_string_lossy().as_ref());
+        for fnt in fntypes {
+            println!("{}: filename type {}", name.to_string_lossy(), fnt);
         }
     }
 
