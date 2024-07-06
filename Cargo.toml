@@ -1,0 +1,20 @@
+[package]
+name = "autoview"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Michael Ekstrand <md@ekstrandom.net>"]
+
+[dependencies]
+# logging and error handling
+log = "^0.4.22"
+thiserror = "^1.0.61"
+anyhow = "^1.0.86"
+
+# CLI and UX support
+clap = "^4.5"
+minus = "^5.6"
+
+# file format support
+flate2 = "^1.0"
+zip = "^2.1.3"
