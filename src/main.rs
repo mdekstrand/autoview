@@ -54,8 +54,9 @@ fn main() -> Result<()> {
     let guess = db.query(&query)?;
     if let Some(ft) = guess.best() {
         println!("{}: {}", opts.file.display(), ft);
+        println!("supertypes:");
         for sup in db.supertypes(ft) {
-            println!("supertype: {}", sup);
+            println!("- {}", sup);
         }
         if db.is_subtype(ft, "text/plain") {
             println!("{}: is text file", opts.file.display());
