@@ -21,6 +21,18 @@ struct CLI {
     #[arg(short = 'v', long = "verbose", action = clap::ArgAction::Count)]
     verbose: u8,
 
+    /// Use a longer output when supported
+    #[arg(short = 'l', long = "long")]
+    long: bool,
+
+    /// Avoid slow display or listing operations
+    #[arg(short = 'f', long = "fast")]
+    fast: bool,
+
+    /// Use slower operations for more thorough display when available
+    #[arg(short = 's', long = "slow")]
+    slow: bool,
+
     /// File to display
     file: PathBuf,
 }
@@ -35,6 +47,10 @@ struct AVAction {
     /// Show the file's metadata
     #[arg(short = 'M', long = "meta")]
     meta: bool,
+
+    /// Show the file content (through a pager if appropriate)
+    #[arg(short = 'S', long = "show")]
+    show: bool,
 
     /// Display the file's MIME type and exit
     #[arg(short = 'T', long = "mime-type")]
