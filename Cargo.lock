@@ -127,6 +127,7 @@ dependencies = [
  "log",
  "lz4_flex",
  "minus",
+ "shared-mime",
  "shared-mime-embedded",
  "snap",
  "stderrlog",

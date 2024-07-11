@@ -14,7 +14,8 @@ stderrlog = "^0.6"
 colorchoice = "1"
 anstyle = "1"
 
-shared-mime-embedded = { git = "https://github.com/mdekstrand/shared-mime" }
+shared-mime = { git = "https://github.com/mdekstrand/shared-mime" }
+shared-mime-embedded = { git = "https://github.com/mdekstrand/shared-mime", optional = true }
 
 # CLI and UX support
 clap = { version = "^4.5", features = ["derive"] }
@@ -28,3 +29,7 @@ zstd = "^0.13"
 lz4_flex = "^0.11"
 snap = "1"
 liblzma = "^0.3"
+
+[features]
+gpl = []
+xdg-embedded = ["shared-mime-embedded", "gpl"]

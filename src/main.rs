@@ -1,16 +1,25 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use clap::{Args, Parser};
+use clap::{Args, CommandFactory, FromArgMatches, Parser};
 use log::*;
+#[cfg(not(feature = "xdg-embedded"))]
+use shared_mime::{load_mime_db, FileQuery};
+#[cfg(feature = "xdg-embedded")]
 use shared_mime_embedded::{load_mime_db, FileQuery};
 use stderrlog::StdErrLog;
 
 mod interface;
 
+#[cfg(not(feature = "gpl"))]
+static LICENSE_HEADER: &str =
+    "Copyright (c) Michael Ekstrand. Free software under the MIT license.";
+#[cfg(feature = "gpl")]
+static LICENSE_HEADER: &str = "Copyright (c) Michael Ekstrand. Free software under the GNU GPLv3+.";
+
 /// Automatically view files and file information.
 #[derive(Parser)]
-#[command(name = "av")]
+#[command(name = "autoview", version = "0.1.0")]
 struct CLI {
     #[command(flatten)]
     action: AVAction,
@@ -60,7 +69,10 @@ struct AVAction {
 }
 
 fn main() -> Result<()> {
-    let opts = CLI::parse();
+    let mut cmd = CLI::command();
+    cmd = cmd.after_help(LICENSE_HEADER);
+    let matches = cmd.get_matches();
+    let opts = CLI::from_arg_matches(&matches)?;
     StdErrLog::new()
         .verbosity(opts.verbose as usize + 1)
         .init()?;
