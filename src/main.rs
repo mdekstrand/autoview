@@ -3,9 +3,8 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{Args, Parser};
 use log::*;
-use mime::Mime;
+use shared_mime_embedded::{load_mime_db, FileQuery};
 use stderrlog::StdErrLog;
-use xdg_mime::SharedMimeInfo;
 
 /// Automatically view files and file information.
 #[derive(Parser)]
@@ -49,29 +48,20 @@ fn main() -> Result<()> {
         .init()?;
     info!("CLI launching");
 
-    let db = SharedMimeInfo::new();
+    let db = load_mime_db()?;
     info!("guessing type from {}", opts.file.display());
-    let guess = db.guess_mime_type().path(&opts.file).guess();
-    let mime = guess.mime_type();
-    println!("{}: {}", opts.file.display(), mime);
-    if guess.uncertain() {
-        println!("{}: guess is uncertain", opts.file.display());
-    }
-    if let Some(parents) = db.get_parents(mime) {
-        for supertype in parents {
-            println!("parent: {}", supertype);
+    let query = FileQuery::for_path(&opts.file)?;
+    let guess = db.query(&query)?;
+    if let Some(ft) = guess.best() {
+        println!("{}: {}", opts.file.display(), ft);
+        for sup in db.supertypes(ft) {
+            println!("supertype: {}", sup);
         }
-    }
-    let text: Mime = "text/plain".parse()?;
-    if db.mime_type_subclass(mime, &text) {
-        println!("{}: is text file", opts.file.display());
-    }
-
-    if let Some(name) = opts.file.file_name() {
-        let fntypes = db.get_mime_types_from_file_name(name.to_string_lossy().as_ref());
-        for fnt in fntypes {
-            println!("{}: filename type {}", name.to_string_lossy(), fnt);
+        if db.is_subtype(ft, "text/plain") {
+            println!("{}: is text file", opts.file.display());
         }
+    } else {
+        println!("{}: type is uncertain", opts.file.display());
     }
 
     Ok(())
