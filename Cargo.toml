@@ -11,6 +11,8 @@ log = "^0.4.22"
 thiserror = "^1.0.61"
 anyhow = "^1.0.86"
 stderrlog = "^0.6"
+colorchoice = "1"
+anstyle = "1"
 
 shared-mime-embedded = { git = "https://github.com/mdekstrand/shared-mime" }
 

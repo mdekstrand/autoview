@@ -117,9 +117,11 @@ checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
 name = "autoview"
 version = "0.1.0"
 dependencies = [
+ "anstyle",
  "anyhow",
  "bzip2",
  "clap",
+ "colorchoice",
  "flate2",
  "liblzma",
  "log",

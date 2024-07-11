@@ -6,6 +6,8 @@ use log::*;
 use shared_mime_embedded::{load_mime_db, FileQuery};
 use stderrlog::StdErrLog;
 
+mod interface;
+
 /// Automatically view files and file information.
 #[derive(Parser)]
 #[command(name = "av")]
