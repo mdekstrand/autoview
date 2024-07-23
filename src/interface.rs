@@ -73,7 +73,7 @@ pub struct FileRequest {
 /// A viewer is selected by processing the viewers in definition order and
 /// checking each one with [FileViewer::can_view].
 pub trait FileViewer {
-    /// Query whether this viewer can view the file.
+    /// Query whether this viewer can view the file in the specified mode.
     fn can_view(&self, req: FileRequest, mode: Option<ViewType>) -> bool;
 
     /// Get the default view operation for this backend.

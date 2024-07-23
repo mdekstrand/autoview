@@ -2,13 +2,16 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::{Args, CommandFactory, FromArgMatches, Parser};
+use interface::ViewType;
 use log::*;
 #[cfg(not(feature = "xdg-embedded"))]
-use shared_mime::{load_mime_db, FileQuery};
+use shared_mime::load_mime_db;
+use shared_mime::{Answer, FileQuery, MimeDB};
 #[cfg(feature = "xdg-embedded")]
-use shared_mime_embedded::{load_mime_db, FileQuery};
+use shared_mime_embedded::load_mime_db;
 use stderrlog::StdErrLog;
 
+mod backends;
 mod interface;
 
 #[cfg(not(feature = "gpl"))]
@@ -72,31 +75,51 @@ fn main() -> Result<()> {
     let mut cmd = CLI::command();
     cmd = cmd.after_help(LICENSE_HEADER);
     let matches = cmd.get_matches();
-    let opts = CLI::from_arg_matches(&matches)?;
+    let cli = CLI::from_arg_matches(&matches)?;
     StdErrLog::new()
-        .verbosity(opts.verbose as usize + 1)
+        .verbosity(cli.verbose as usize + 1)
         .init()?;
     info!("CLI launching");
 
-    let db = load_mime_db()?;
-    info!("guessing type from {}", opts.file.display());
-    let query = FileQuery::for_path(&opts.file)?;
-    let guess = db.query(&query)?;
-    if let Some(ft) = guess.best() {
-        println!("{}: {}", opts.file.display(), ft);
-        if let Some(desc) = db.description(ft) {
-            println!("description: {}", desc);
-        }
-        println!("supertypes:");
-        for sup in db.supertypes(ft) {
-            println!("- {}", sup);
-        }
-        if db.is_subtype(ft, "text/plain") {
-            println!("{}: is text file", opts.file.display());
-        }
-    } else {
-        println!("{}: type is uncertain", opts.file.display());
+    let mut view = None;
+    if cli.action.head {
+        view = Some(ViewType::Head)
+    } else if cli.action.meta {
+        view = Some(ViewType::Meta)
+    } else if cli.action.show {
+        view = Some(ViewType::Full)
     }
 
-    Ok(())
+    let db = load_mime_db()?;
+    debug!("guessing type from {}", cli.file.display());
+    let query = FileQuery::for_path(&cli.file)?;
+    let guess = db.query(&query)?;
+
+    if cli.action.mime_type {
+        cli.show_mime(&db, &guess)
+    } else {
+        Ok(())
+    }
+}
+
+impl CLI {
+    fn show_mime(&self, db: &MimeDB, guess: &Answer) -> Result<()> {
+        if let Some(ft) = guess.best() {
+            println!("{}: {}", self.file.display(), ft);
+            if let Some(desc) = db.description(ft) {
+                println!("description: {}", desc);
+            }
+            println!("supertypes:");
+            for sup in db.supertypes(ft) {
+                println!("- {}", sup);
+            }
+            if db.is_subtype(ft, "text/plain") {
+                println!("{}: is text file", self.file.display());
+            }
+        } else {
+            println!("{}: type is uncertain", self.file.display());
+        }
+
+        Ok(())
+    }
 }
