@@ -1,10 +1,13 @@
 //! Interface between AutoView and the backends.
+use std::error::Error;
 use std::fs::Metadata;
 use std::io;
 use std::path::PathBuf;
 
 use colorchoice::ColorChoice;
 use thiserror::Error;
+
+use crate::views::meta::FileMetaDisplay;
 
 /// Request for speed of operations.
 ///
@@ -37,19 +40,21 @@ pub enum ViewType {
 pub enum ViewError {
     #[error("IO error: {0}")]
     IO(#[from] io::Error),
+    #[error("Wrapped error: {0}")]
+    Wrapped(Box<dyn Error + Send + Sync>),
     #[error("view error: {0}")]
-    Generic(String),
+    Unspecified(String),
 }
 
 impl From<String> for ViewError {
     fn from(value: String) -> Self {
-        ViewError::Generic(value)
+        ViewError::Unspecified(value)
     }
 }
 
 impl From<&str> for ViewError {
     fn from(value: &str) -> Self {
-        ViewError::Generic(value.to_string())
+        ViewError::Unspecified(value.to_string())
     }
 }
 
@@ -60,6 +65,8 @@ pub struct FileRequest {
     pub path: PathBuf,
     /// File metadata (from [std::fs::metadata]).
     pub meta: Option<Metadata>,
+    /// The file's MIME type.
+    pub mime_type: String,
     /// Whether to use a long display with more details.
     pub long_display: bool,
     /// The requested view speed.
@@ -74,8 +81,11 @@ pub struct FileRequest {
 /// checking each one with [FileViewer::can_view].
 pub trait FileViewer {
     /// Query whether this viewer can view the file in the specified mode.
-    fn can_view(&self, req: FileRequest, mode: Option<ViewType>) -> bool;
+    fn can_view(&self, req: &FileRequest, mode: &Option<ViewType>) -> bool;
 
     /// Get the default view operation for this backend.
     fn default_view(&self) -> ViewType;
+
+    /// Get the metadata from this backend.
+    fn meta_view(&self, req: &FileRequest) -> Result<FileMetaDisplay, ViewError>;
 }

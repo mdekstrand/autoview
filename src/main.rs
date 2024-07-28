@@ -1,8 +1,10 @@
-use std::path::PathBuf;
+use std::io::{stdout, IsTerminal};
+use std::{fs::metadata, path::PathBuf};
 
 use anyhow::Result;
 use clap::{Args, CommandFactory, FromArgMatches, Parser};
-use interface::ViewType;
+use colorchoice::ColorChoice;
+use interface::{FileRequest, ViewSpeed, ViewType};
 use log::*;
 #[cfg(not(feature = "xdg-embedded"))]
 use shared_mime::load_mime_db;
@@ -10,9 +12,12 @@ use shared_mime::{Answer, FileQuery, MimeDB};
 #[cfg(feature = "xdg-embedded")]
 use shared_mime_embedded::load_mime_db;
 use stderrlog::StdErrLog;
+use styling::stylesheet::StyleSheet;
 
 mod backends;
 mod interface;
+mod styling;
+pub mod views;
 
 #[cfg(not(feature = "gpl"))]
 static LICENSE_HEADER: &str =
@@ -81,6 +86,15 @@ fn main() -> Result<()> {
         .init()?;
     info!("CLI launching");
 
+    let db = load_mime_db()?;
+    debug!("guessing type from {}", cli.file.display());
+    let query = FileQuery::for_path(&cli.file)?;
+    let guess = db.query(&query)?;
+
+    if cli.action.mime_type {
+        return cli.show_mime(&db, &guess);
+    }
+
     let mut view = None;
     if cli.action.head {
         view = Some(ViewType::Head)
@@ -90,16 +104,53 @@ fn main() -> Result<()> {
         view = Some(ViewType::Full)
     }
 
-    let db = load_mime_db()?;
-    debug!("guessing type from {}", cli.file.display());
-    let query = FileQuery::for_path(&cli.file)?;
-    let guess = db.query(&query)?;
-
-    if cli.action.mime_type {
-        cli.show_mime(&db, &guess)
+    let color = ColorChoice::global();
+    let color_enabled = match color {
+        ColorChoice::Always | ColorChoice::AlwaysAnsi => true,
+        ColorChoice::Never => false,
+        ColorChoice::Auto => stdout().is_terminal(),
+    };
+    debug!(
+        "color {}",
+        if color_enabled { "enabled" } else { "disabled" }
+    );
+    let styles = if color_enabled {
+        StyleSheet::term_default()
     } else {
-        Ok(())
+        StyleSheet::empty()
+    };
+
+    let meta = metadata(&cli.file)?;
+    let request = FileRequest {
+        path: cli.file.clone(),
+        meta: Some(meta),
+        mime_type: guess.best().unwrap_or("application/octet-stream").into(),
+        long_display: cli.long,
+        speed: if cli.fast {
+            ViewSpeed::Fast
+        } else if cli.slow {
+            ViewSpeed::Fast
+        } else {
+            ViewSpeed::Default
+        },
+        color,
+    };
+
+    for back in backends::backends() {
+        if back.can_view(&request, &view) {
+            let view = view.clone().unwrap_or_else(|| back.default_view());
+            match view {
+                ViewType::Meta => {
+                    let meta = back.meta_view(&request)?;
+                    debug!("meta: {:?}", meta);
+                    meta.render(&styles, stdout())?;
+                }
+                _ => todo!(),
+            }
+        }
     }
+
+    Ok(())
 }
 
 impl CLI {
