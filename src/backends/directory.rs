@@ -1,14 +1,13 @@
 use std::fs::read_dir;
-use std::path::Path;
+use std::process::Command;
 use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
 
 use log::*;
 use uu_ls::uumain;
 
-use crate::programs::run_program;
+use crate::programs::{find_program, program_name, run_command};
 use crate::{
     interface::*,
-    programs::find_program,
     styling::{
         names::{FILE_SIZE, FILE_TYPE},
         text::{styled, unstyled},
@@ -50,8 +49,8 @@ impl FileViewer for DirBackend {
 
     fn full_view(&self, req: &FileRequest) -> Result<(), ViewError> {
         for prog in FILE_LIST_PROGRAMS {
-            if let Some(path) = find_program(OsStr::from_bytes(prog.as_bytes()))? {
-                return self.external_ls(req, prog, path.as_path());
+            if let Some(cmd) = find_program(OsStr::from_bytes(prog.as_bytes()))? {
+                return self.external_ls(req, cmd);
             }
         }
         self.fallback_ls(req)
@@ -59,17 +58,17 @@ impl FileViewer for DirBackend {
 }
 
 impl DirBackend {
-    fn external_ls(&self, req: &FileRequest, program: &str, path: &Path) -> Result<(), ViewError> {
-        info!("listing directory with {}", program);
-        let mut args = Vec::new();
+    fn external_ls(&self, req: &FileRequest, mut cmd: Command) -> Result<(), ViewError> {
+        let name = program_name(&cmd);
+        info!("listing directory with {}", name);
         if req.long_display {
-            args.push("-l".into());
+            cmd.arg("-l");
         }
-        if program == "eza" {
-            args.push("--color=always".into())
+        if name == "eza" {
+            cmd.arg("--color=always");
         }
-        args.push(req.path.as_os_str().to_os_string());
-        run_program(path, &args)?;
+        cmd.arg(&req.path);
+        run_command(cmd)?;
         Ok(())
     }
 

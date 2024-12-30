@@ -1,6 +1,7 @@
 //! Utilities for finding and invoking external programs.
+use std::ffi::OsString;
+use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
-use std::{ffi::OsStr, path::PathBuf};
 
 use thiserror::Error;
 use which::{which, Error as WhichError};
@@ -27,19 +28,25 @@ impl ProgramError {
 /// Find a program.
 ///
 /// This wraps [which], returning Ok(None) when the program cannot be found.
-pub fn find_program(name: &OsStr) -> Result<Option<PathBuf>, ProgramError> {
-    match which(name) {
-        Ok(path) => Ok(Some(path)),
+pub fn find_program<S: Into<OsString>>(name: S) -> Result<Option<Command>, ProgramError> {
+    match which(name.into()) {
+        Ok(path) => Ok(Some(Command::new(path))),
         Err(WhichError::CannotFindBinaryPath) => Ok(None),
         Err(_) => Err(ProgramError::ProgramSearchError),
     }
 }
 
-/// Run an external program.
-pub fn run_program<P: AsRef<OsStr>, A: AsRef<OsStr>>(
-    program: P,
-    args: &[A],
-) -> Result<(), ProgramError> {
-    let res = Command::new(program).args(args).status()?;
+pub fn run_command(mut cmd: Command) -> Result<(), ProgramError> {
+    let res = cmd.status()?;
     ProgramError::check(res)
+}
+
+pub fn program_name(cmd: &Command) -> String {
+    let exe = cmd.get_program();
+    let path = PathBuf::from(exe);
+    if let Some(name) = path.file_name() {
+        name.to_string_lossy().to_string()
+    } else {
+        "<unknown>".to_string()
+    }
 }

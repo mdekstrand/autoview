@@ -1,7 +1,7 @@
 use std::io::{stdout, IsTerminal};
 use std::{fs::metadata, path::PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{Args, CommandFactory, FromArgMatches, Parser};
 use colorchoice::ColorChoice;
 use interface::{FileRequest, ViewSpeed, ViewType};
@@ -119,8 +119,7 @@ fn main() -> Result<()> {
     } else if cli.action.show {
         Some(ViewType::Full)
     } else {
-        error!("no action specified");
-        return Err(anyhow!("no action"));
+        None
     };
 
     let meta = metadata(&cli.file)?;
