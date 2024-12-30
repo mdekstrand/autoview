@@ -128,7 +128,7 @@ fn main() -> Result<()> {
         speed: if cli.fast {
             ViewSpeed::Fast
         } else if cli.slow {
-            ViewSpeed::Fast
+            ViewSpeed::Slow
         } else {
             ViewSpeed::Default
         },
