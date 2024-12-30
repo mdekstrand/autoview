@@ -646,8 +646,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 [[package]]
 name = "friendly"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2508fe4abd2df98de750068a451532260eba6f3a5223d242dbbe8a9edbbc60c"
+source = "git+https://github.com/mdekstrand/friendly.git#9437676e5bf1d0b7e1dd08425531181cbd8215bc"
 dependencies = [
  "num-traits",
 ]

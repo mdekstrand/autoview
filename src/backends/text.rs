@@ -42,11 +42,7 @@ impl FileViewer for TextBackend {
 
         if let Some(lines) = self.count_lines(req) {
             headline.push(unstyled(" with "));
-            if lines > 1000 {
-                headline.push(styled(format!("{}", friendly::scalar(lines)), &FILE_SIZE));
-            } else {
-                headline.push(styled(format!("{}", lines), &FILE_SIZE));
-            }
+            headline.push(styled(format!("{}", friendly::integer(lines)), &FILE_SIZE));
             headline.push(unstyled(" lines"));
         } else if let Some(bytes) = req.file_size() {
             headline.push(unstyled(" ("));
