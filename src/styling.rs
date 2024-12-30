@@ -22,7 +22,12 @@ pub fn color_enabled() -> bool {
 }
 
 /// Wrap text in styling.
-pub fn styled<'s, S: AsRef<str>>(text: S, style: &'s Style) -> StyleDisplay<'s> {
+pub fn styled<S: AsRef<str>>(text: S, style: &Style) -> StyleDisplay {
+    let style = if color_enabled() {
+        style.clone()
+    } else {
+        Style::new()
+    };
     StyleDisplay {
         text: text.as_ref().to_string(),
         style,
@@ -30,12 +35,12 @@ pub fn styled<'s, S: AsRef<str>>(text: S, style: &'s Style) -> StyleDisplay<'s> 
 }
 
 /// Wrapper to display a styled texts.
-pub struct StyleDisplay<'s> {
+pub struct StyleDisplay {
     text: String,
-    style: &'s Style,
+    style: Style,
 }
 
-impl<'t> Display for StyleDisplay<'t> {
+impl<'t> Display for StyleDisplay {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}{:#}", self.style, self.text, self.style)
     }
