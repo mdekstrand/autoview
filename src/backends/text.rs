@@ -23,7 +23,7 @@ pub struct TextBackend {}
 const BIG_FILE: u64 = 32 * 1024 * 1024;
 
 impl FileViewer for TextBackend {
-    fn can_view(&self, req: &FileRequest, mode: &Option<ViewType>) -> bool {
+    fn can_view(&self, req: &FileRequest, _mode: &Option<ViewType>) -> bool {
         let db = mime_db();
         db.is_subtype(&req.mime_type, "text/plain")
     }
