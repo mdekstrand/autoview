@@ -18,6 +18,11 @@ struct HexView {
     nbytes: Option<u32>,
 }
 
+struct FileSummary {
+    meta: FileMeta,
+    preview: HexView,
+}
+
 /// Viewer for generic binary files.
 impl FileViewer for BinfileBackend {
     fn make_view(&self, req: &FileRequest, mode: &Option<ViewType>) -> Option<Box<dyn FileView>> {
@@ -26,7 +31,11 @@ impl FileViewer for BinfileBackend {
             match mode {
                 Some(ViewType::Meta) => Some(Box::new(FileMeta)),
                 Some(ViewType::Full) => Some(Box::new(HexView { nbytes: None })),
-                _ => Some(Box::new(HexView { nbytes: Some(256) })),
+                Some(ViewType::Head) => Some(Box::new(HexView { nbytes: Some(256) })),
+                None => Some(Box::new(FileSummary {
+                    meta: FileMeta,
+                    preview: HexView { nbytes: Some(256) },
+                })),
             }
         } else {
             None
@@ -49,7 +58,7 @@ impl FileView for FileMeta {
         println!();
 
         if let Some(desc) = db.description(&req.mime_type) {
-            println!("{}: {}", styled("Type Description", &FIELD_NAME), desc);
+            println!("{}: {}", styled("Type description", &FIELD_NAME), desc);
         };
         if let Some(size) = req.file_size() {
             println!("{}: {}", styled("Size", &FIELD_NAME), friendly::bytes(size));
@@ -79,6 +88,15 @@ impl FileView for HexView {
             return Err(ViewError::Unspecified("no hex viewer".into()));
         };
         run_command(cmd)?;
+        Ok(())
+    }
+}
+
+impl FileView for FileSummary {
+    fn display(&self, req: &FileRequest, options: &ViewOptions) -> Result<(), ViewError> {
+        self.meta.display(req, options)?;
+        println!("{}", styled("Initial content:", &FIELD_NAME));
+        self.preview.display(req, options)?;
         Ok(())
     }
 }

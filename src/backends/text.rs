@@ -58,7 +58,7 @@ impl FileView for TextMeta {
         println!();
 
         if let Some(desc) = db.description(&req.mime_type) {
-            println!("{}: {}", styled("Text Description", &FIELD_NAME), desc);
+            println!("{}: {}", styled("Text description", &FIELD_NAME), desc);
         };
         if let Some(size) = req.file_size() {
             println!("{}: {}", styled("Size", &FIELD_NAME), friendly::bytes(size));
