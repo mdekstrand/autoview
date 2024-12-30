@@ -9,7 +9,6 @@ use colorchoice::ColorChoice;
 use thiserror::Error;
 
 use crate::programs::ProgramError;
-use crate::views::meta::FileMetaDisplay;
 
 /// Request for speed of operations.
 ///
@@ -77,12 +76,26 @@ pub struct FileRequest {
     pub meta: Option<Metadata>,
     /// The file's MIME type.
     pub mime_type: String,
+}
+
+/// Options for a view.
+#[derive(Clone)]
+pub struct ViewOptions {
     /// Whether to use a long display with more details.
     pub long_display: bool,
     /// The requested view speed.
     pub speed: ViewSpeed,
-    /// Whether to display color in this view.
-    pub color: ColorChoice,
+    /// The user's sepcified choice of color mode.
+    ///
+    /// Styling functions will automatically respect the color choice, this
+    /// makes it available for controlling other programs.
+    pub color_choice: ColorChoice,
+    /// Whether color display is enabled.  This is the result of resolving
+    /// [color_choice] with the current terminal settings.
+    ///
+    /// Styling functions will automatically respect the color choice, this
+    /// makes it available for controlling other programs.
+    pub color_enabled: bool,
 }
 
 /// Interface for file view backends.
@@ -90,20 +103,16 @@ pub struct FileRequest {
 /// A viewer is selected by processing the viewers in definition order and
 /// checking each one with [FileViewer::can_view].
 pub trait FileViewer {
-    /// Query whether this viewer can view the file in the specified mode.
-    fn can_view(&self, req: &FileRequest, mode: &Option<ViewType>) -> bool;
+    /// Obtain a view if this backend can supply one.
+    ///
+    /// If `mode` is `None`, the backend should return a default view for this
+    /// file, if it can supply one.
+    fn make_view(&self, req: &FileRequest, mode: &Option<ViewType>) -> Option<Box<dyn FileView>>;
+}
 
-    /// Get the default view operation for this backend.
-    fn default_view(&self) -> ViewType;
-
-    /// Get the metadata from this backend.
-    fn meta_view(&self, req: &FileRequest) -> Result<FileMetaDisplay, ViewError>;
-
-    /// Display the first lines of this file.
-    fn head_view(&self, req: &FileRequest) -> Result<(), ViewError>;
-
-    /// Display this file.
-    fn full_view(&self, req: &FileRequest) -> Result<(), ViewError>;
+/// Implementation of a single file view request.
+pub trait FileView {
+    fn display(&self, req: &FileRequest, options: &ViewOptions) -> Result<(), ViewError>;
 }
 
 impl FileRequest {

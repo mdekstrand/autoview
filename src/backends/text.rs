@@ -7,84 +7,78 @@ use log::*;
 
 use crate::mime::mime_db;
 use crate::pager::page_file;
-use crate::views::meta::FileMetaField;
+use crate::styling::FIELD_NAME;
 use crate::{
     interface::*,
-    styling::{
-        names::{FILE_SIZE, FILE_TYPE},
-        text::{styled, unstyled},
-    },
-    views::meta::FileMetaDisplay,
+    styling::{styled, FILE_SIZE, FILE_TYPE},
 };
 
 /// Non-specialized text file backend.
 pub struct TextBackend {}
+struct TextMeta;
+struct TextView {
+    lines: Option<usize>,
+}
 
 const BIG_FILE: u64 = 32 * 1024 * 1024;
 
 impl FileViewer for TextBackend {
-    fn can_view(&self, req: &FileRequest, _mode: &Option<ViewType>) -> bool {
+    fn make_view(&self, req: &FileRequest, mode: &Option<ViewType>) -> Option<Box<dyn FileView>> {
         let db = mime_db();
-        db.is_subtype(&req.mime_type, "text/plain")
-    }
-
-    fn default_view(&self) -> ViewType {
-        ViewType::Full
-    }
-
-    fn meta_view(&self, req: &FileRequest) -> Result<FileMetaDisplay, ViewError> {
-        let db = mime_db();
-        let mut headline = vec![
-            unstyled("text file of type "),
-            styled(&req.mime_type, FILE_TYPE),
-        ];
-        let mut fields = Vec::new();
-
-        if let Some(lines) = self.count_lines(req) {
-            headline.push(unstyled(" with "));
-            headline.push(styled(format!("{}", friendly::integer(lines)), &FILE_SIZE));
-            headline.push(unstyled(" lines"));
-        } else if let Some(bytes) = req.file_size() {
-            headline.push(unstyled(" ("));
-            headline.push(styled(format!("{}", friendly::bytes(bytes)), &FILE_SIZE));
-            headline.push(unstyled(")"));
+        if db.is_subtype(&req.mime_type, "text/plain") {
+            match mode {
+                Some(ViewType::Meta) => Some(Box::new(TextMeta)),
+                Some(ViewType::Head) => Some(Box::new(TextView { lines: Some(15) })),
+                _ => Some(Box::new(TextView { lines: None })),
+            }
+        } else {
+            None
         }
+    }
+}
+
+impl FileView for TextMeta {
+    fn display(&self, req: &FileRequest, options: &ViewOptions) -> Result<(), ViewError> {
+        let db = mime_db();
+
+        print!("text file of type {}", styled(&req.mime_type, &FILE_TYPE));
+
+        if let Some(lines) = self.count_lines(req, options) {
+            print!(
+                " with {} lines",
+                styled(format!("{}", friendly::integer(lines)), &FILE_SIZE)
+            );
+        }
+        if let Some(bytes) = req.file_size() {
+            print!(
+                " ({})",
+                styled(format!("{}", friendly::bytes(bytes)), &FILE_SIZE)
+            );
+        }
+        println!();
 
         if let Some(desc) = db.description(&req.mime_type) {
-            fields.push(FileMetaField {
-                name: "Type Description".into(),
-                value: vec![unstyled(desc)],
-                extra: vec![],
-            })
+            println!("{}: {}", styled("Text Description", &FIELD_NAME), desc);
         };
         if let Some(size) = req.file_size() {
-            fields.push(FileMetaField {
-                name: "Size".into(),
-                value: vec![unstyled(format!("{}", friendly::bytes(size)))],
-                extra: vec![],
-            })
+            println!("{}: {}", styled("Size", &FIELD_NAME), friendly::bytes(size));
         }
-        Ok(FileMetaDisplay { headline, fields })
-    }
-
-    fn head_view(&self, req: &FileRequest) -> Result<(), ViewError> {
-        let mut printer = PrettyPrinter::new();
-        printer.input_file(&req.path);
-        printer.line_ranges(LineRanges::from(vec![LineRange::new(1, 10)]));
-        printer.paging_mode(bat::PagingMode::QuitIfOneScreen);
-        printer.print().map_err(ViewError::wrap)?;
         Ok(())
     }
+}
 
-    fn full_view(&self, req: &FileRequest) -> Result<(), ViewError> {
+impl FileView for TextView {
+    fn display(&self, req: &FileRequest, _options: &ViewOptions) -> Result<(), ViewError> {
         let size = req.file_size().unwrap_or_default();
-        if size > BIG_FILE {
+        if size > BIG_FILE && self.lines.is_none() {
             info!("paging large file {:?}", req.path);
             page_file(&req.path)?;
         } else {
-            info!("pretty-printing input {:?}", req.path);
             let mut printer = PrettyPrinter::new();
             printer.input_file(&req.path);
+            if let Some(lines) = self.lines {
+                printer.line_ranges(LineRanges::from(vec![LineRange::new(1, lines)]));
+            }
             printer.paging_mode(bat::PagingMode::QuitIfOneScreen);
             printer.print().map_err(ViewError::wrap)?;
         }
@@ -92,17 +86,17 @@ impl FileViewer for TextBackend {
     }
 }
 
-impl TextBackend {
-    fn want_scan(&self, req: &FileRequest) -> bool {
-        match req.speed {
+impl TextMeta {
+    fn want_scan(&self, req: &FileRequest, options: &ViewOptions) -> bool {
+        match options.speed {
             ViewSpeed::Slow => true,
             ViewSpeed::Default => req.file_size().unwrap_or_default() <= BIG_FILE,
             _ => false,
         }
     }
 
-    fn count_lines(&self, req: &FileRequest) -> Option<usize> {
-        if !self.want_scan(req) {
+    fn count_lines(&self, req: &FileRequest, options: &ViewOptions) -> Option<usize> {
+        if !self.want_scan(req, options) {
             return None;
         }
 

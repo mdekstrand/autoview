@@ -4,11 +4,11 @@ use std::{fs::metadata, path::PathBuf};
 use anyhow::Result;
 use clap::{Args, CommandFactory, FromArgMatches, Parser};
 use colorchoice::ColorChoice;
-use interface::{FileRequest, ViewSpeed, ViewType};
+use interface::{FileRequest, ViewOptions, ViewSpeed, ViewType};
 use log::*;
 use shared_mime::{Answer, FileQuery, MimeDB};
 use stderrlog::StdErrLog;
-use styling::stylesheet::StyleSheet;
+use styling::set_color_enabled;
 
 mod backends;
 mod interface;
@@ -16,7 +16,6 @@ pub mod mime;
 pub mod pager;
 pub mod programs;
 mod styling;
-pub mod views;
 
 #[cfg(not(feature = "gpl"))]
 static LICENSE_HEADER: &str =
@@ -85,8 +84,8 @@ fn main() -> Result<()> {
         .init()?;
     info!("CLI launching");
 
-    let color = ColorChoice::global();
-    let color_enabled = match color {
+    let color_choice = ColorChoice::global();
+    let color_enabled = match color_choice {
         ColorChoice::Always | ColorChoice::AlwaysAnsi => true,
         ColorChoice::Never => false,
         ColorChoice::Auto => stdout().is_terminal(),
@@ -95,11 +94,7 @@ fn main() -> Result<()> {
         "color {}",
         if color_enabled { "enabled" } else { "disabled" }
     );
-    let styles = if color_enabled {
-        StyleSheet::term_default()
-    } else {
-        StyleSheet::empty()
-    };
+    set_color_enabled(color_enabled);
 
     let db = mime::mime_db();
     debug!("guessing type from {}", cli.file.display());
@@ -127,6 +122,8 @@ fn main() -> Result<()> {
         path: cli.file.clone(),
         meta: Some(meta),
         mime_type: guess.best().unwrap_or("application/octet-stream").into(),
+    };
+    let options = ViewOptions {
         long_display: cli.long,
         speed: if cli.fast {
             ViewSpeed::Fast
@@ -135,25 +132,13 @@ fn main() -> Result<()> {
         } else {
             ViewSpeed::Default
         },
-        color,
+        color_choice,
+        color_enabled,
     };
 
     for back in backends::backends() {
-        if back.can_view(&request, &view) {
-            let view = view.clone().unwrap_or_else(|| back.default_view());
-            match view {
-                ViewType::Meta => {
-                    let meta = back.meta_view(&request)?;
-                    debug!("meta: {:?}", meta);
-                    meta.render(&styles, stdout())?;
-                }
-                ViewType::Full => {
-                    back.full_view(&request)?;
-                }
-                ViewType::Head => {
-                    back.head_view(&request)?;
-                }
-            }
+        if let Some(view) = back.make_view(&request, &view) {
+            view.display(&request, &options)?;
             break;
         }
     }

@@ -8,11 +8,7 @@ use uu_ls::uumain;
 use crate::programs::{find_program, program_name, run_command};
 use crate::{
     interface::*,
-    styling::{
-        names::{FILE_SIZE, FILE_TYPE},
-        text::{styled, unstyled},
-    },
-    views::meta::FileMetaDisplay,
+    styling::{styled, FILE_SIZE, FILE_TYPE},
 };
 
 const FILE_LIST_PROGRAMS: &[&str] = &["eza", "lsd", "exa", "lla", "ls"];
@@ -20,48 +16,56 @@ const FILE_LIST_PROGRAMS: &[&str] = &["eza", "lsd", "exa", "lla", "ls"];
 /// Directory backend.
 pub struct DirBackend {}
 
+struct DirMeta {}
+struct LSView {}
+
 impl FileViewer for DirBackend {
-    fn can_view(&self, req: &FileRequest, _mode: &Option<ViewType>) -> bool {
-        req.mime_type == "inode/directory"
-    }
-
-    fn default_view(&self) -> ViewType {
-        ViewType::Full
-    }
-
-    fn meta_view(&self, req: &FileRequest) -> Result<FileMetaDisplay, ViewError> {
-        let rd = read_dir(&req.path)?;
-        let nfiles = rd.count();
-        Ok(FileMetaDisplay {
-            headline: vec![
-                styled("directory", FILE_TYPE),
-                unstyled(" with "),
-                styled(format!("{} entries", nfiles), FILE_SIZE),
-            ],
-            fields: Vec::new(),
-        })
-    }
-
-    fn head_view(&self, req: &FileRequest) -> Result<(), ViewError> {
-        // FIXME: actuall display first lines
-        self.full_view(req)
-    }
-
-    fn full_view(&self, req: &FileRequest) -> Result<(), ViewError> {
-        for prog in FILE_LIST_PROGRAMS {
-            if let Some(cmd) = find_program(OsStr::from_bytes(prog.as_bytes()))? {
-                return self.external_ls(req, cmd);
+    fn make_view(&self, req: &FileRequest, mode: &Option<ViewType>) -> Option<Box<dyn FileView>> {
+        if req.mime_type == "inode/directory" {
+            match mode {
+                Some(ViewType::Meta) => Some(Box::new(DirMeta {})),
+                _ => Some(Box::new(LSView {})),
             }
+        } else {
+            None
         }
-        self.fallback_ls(req)
     }
 }
 
-impl DirBackend {
-    fn external_ls(&self, req: &FileRequest, mut cmd: Command) -> Result<(), ViewError> {
+impl FileView for DirMeta {
+    fn display(&self, req: &FileRequest, _options: &ViewOptions) -> Result<(), ViewError> {
+        let rd = read_dir(&req.path)?;
+        let nfiles = rd.count();
+        println!(
+            "{} with {}",
+            styled("directory", &FILE_TYPE),
+            styled(format!("{} entries", nfiles), &FILE_SIZE)
+        );
+        Ok(())
+    }
+}
+
+impl FileView for LSView {
+    fn display(&self, req: &FileRequest, options: &ViewOptions) -> Result<(), ViewError> {
+        for prog in FILE_LIST_PROGRAMS {
+            if let Some(cmd) = find_program(OsStr::from_bytes(prog.as_bytes()))? {
+                return self.external_ls(req, options, cmd);
+            }
+        }
+        self.fallback_ls(req, options)
+    }
+}
+
+impl LSView {
+    fn external_ls(
+        &self,
+        req: &FileRequest,
+        options: &ViewOptions,
+        mut cmd: Command,
+    ) -> Result<(), ViewError> {
         let name = program_name(&cmd);
         info!("listing directory with {}", name);
-        if req.long_display {
+        if options.long_display {
             cmd.arg("-l");
         }
         if name == "eza" {
@@ -72,10 +76,10 @@ impl DirBackend {
         Ok(())
     }
 
-    fn fallback_ls(&self, req: &FileRequest) -> Result<(), ViewError> {
+    fn fallback_ls(&self, req: &FileRequest, options: &ViewOptions) -> Result<(), ViewError> {
         info!("listing directory with fallback uu_ls");
         let mut args = vec!["ls-internal".into(), "-F".into()];
-        if req.long_display {
+        if options.long_display {
             args.push("-l".into());
         }
         args.push(req.path.as_os_str().to_os_string());
