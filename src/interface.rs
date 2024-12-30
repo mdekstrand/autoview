@@ -2,6 +2,7 @@
 use std::error::Error;
 use std::fs::Metadata;
 use std::io;
+use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 
 use colorchoice::ColorChoice;
@@ -61,6 +62,12 @@ impl From<&str> for ViewError {
     }
 }
 
+impl ViewError {
+    pub fn wrap<E: Error + Send + Sync + 'static>(err: E) -> ViewError {
+        ViewError::Wrapped(Box::new(err))
+    }
+}
+
 /// Information to request a file view.
 #[derive(Debug, Clone)]
 pub struct FileRequest {
@@ -97,4 +104,10 @@ pub trait FileViewer {
 
     /// Display this file.
     fn full_view(&self, req: &FileRequest) -> Result<(), ViewError>;
+}
+
+impl FileRequest {
+    pub fn file_size(&self) -> Option<u64> {
+        self.meta.as_ref().map(|m| m.size())
+    }
 }

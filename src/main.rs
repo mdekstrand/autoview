@@ -1,21 +1,19 @@
 use std::io::{stdout, IsTerminal};
 use std::{fs::metadata, path::PathBuf};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::{Args, CommandFactory, FromArgMatches, Parser};
 use colorchoice::ColorChoice;
 use interface::{FileRequest, ViewSpeed, ViewType};
 use log::*;
-#[cfg(not(feature = "xdg-embedded"))]
-use shared_mime::load_mime_db;
 use shared_mime::{Answer, FileQuery, MimeDB};
-#[cfg(feature = "xdg-embedded")]
-use shared_mime_embedded::load_mime_db;
 use stderrlog::StdErrLog;
 use styling::stylesheet::StyleSheet;
 
 mod backends;
 mod interface;
+pub mod mime;
+pub mod pager;
 pub mod programs;
 mod styling;
 pub mod views;
@@ -87,24 +85,6 @@ fn main() -> Result<()> {
         .init()?;
     info!("CLI launching");
 
-    let db = load_mime_db()?;
-    debug!("guessing type from {}", cli.file.display());
-    let query = FileQuery::for_path(&cli.file)?;
-    let guess = db.query(&query)?;
-
-    if cli.action.mime_type {
-        return cli.show_mime(&db, &guess);
-    }
-
-    let mut view = None;
-    if cli.action.head {
-        view = Some(ViewType::Head)
-    } else if cli.action.meta {
-        view = Some(ViewType::Meta)
-    } else if cli.action.show {
-        view = Some(ViewType::Full)
-    }
-
     let color = ColorChoice::global();
     let color_enabled = match color {
         ColorChoice::Always | ColorChoice::AlwaysAnsi => true,
@@ -119,6 +99,28 @@ fn main() -> Result<()> {
         StyleSheet::term_default()
     } else {
         StyleSheet::empty()
+    };
+
+    let db = mime::mime_db();
+    debug!("guessing type from {}", cli.file.display());
+    let query = FileQuery::for_path(&cli.file)?;
+    let guess = db.query(&query)?;
+    debug!("mime type result: {:?}", guess);
+
+    if cli.action.mime_type {
+        info!("outputting MIME type information");
+        return cli.show_mime(db.as_ref(), &guess);
+    }
+
+    let view = if cli.action.head {
+        Some(ViewType::Head)
+    } else if cli.action.meta {
+        Some(ViewType::Meta)
+    } else if cli.action.show {
+        Some(ViewType::Full)
+    } else {
+        error!("no action specified");
+        return Err(anyhow!("no action"));
     };
 
     let meta = metadata(&cli.file)?;
@@ -162,6 +164,7 @@ fn main() -> Result<()> {
 impl CLI {
     fn show_mime(&self, db: &MimeDB, guess: &Answer) -> Result<()> {
         if let Some(ft) = guess.best() {
+            debug!("found best guess {}", ft);
             println!("{}: {}", self.file.display(), ft);
             if let Some(desc) = db.description(ft) {
                 println!("description: {}", desc);
@@ -174,6 +177,7 @@ impl CLI {
                 println!("{}: is text file", self.file.display());
             }
         } else {
+            debug!("no best guess");
             println!("{}: type is uncertain", self.file.display());
         }
 

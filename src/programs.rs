@@ -14,6 +14,15 @@ pub enum ProgramError {
     #[error("I/O error running program")]
     IOError(#[from] std::io::Error),
 }
+impl ProgramError {
+    pub fn check(status: ExitStatus) -> Result<(), ProgramError> {
+        if status.success() {
+            Ok(())
+        } else {
+            Err(ProgramError::ExitError(status))
+        }
+    }
+}
 
 /// Find a program.
 ///
@@ -32,9 +41,5 @@ pub fn run_program<P: AsRef<OsStr>, A: AsRef<OsStr>>(
     args: &[A],
 ) -> Result<(), ProgramError> {
     let res = Command::new(program).args(args).status()?;
-    if res.success() {
-        Ok(())
-    } else {
-        Err(ProgramError::ExitError(res))
-    }
+    ProgramError::check(res)
 }
