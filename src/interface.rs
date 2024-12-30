@@ -79,6 +79,7 @@ pub struct FileRequest {
 }
 
 /// Options for a view.
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct ViewOptions {
     /// Whether to use a long display with more details.
