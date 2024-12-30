@@ -14,8 +14,8 @@ stderrlog = "^0.6"
 colorchoice = "1"
 anstyle = "1"
 
-shared-mime = { git = "https://github.com/mdekstrand/shared-mime" }
-shared-mime-embedded = { git = "https://github.com/mdekstrand/shared-mime", optional = true }
+shared-mime = "^0.1"
+shared-mime-embedded = { version = "^0.1", optional = true }
 which = "^7.0"
 
 # CLI and UX support

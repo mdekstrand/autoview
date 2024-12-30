@@ -1397,8 +1397,9 @@ dependencies = [
 
 [[package]]
 name = "shared-mime"
-version = "0.1.0-alpha1"
-source = "git+https://github.com/mdekstrand/shared-mime#9c772098f08ee30e5ee00e30e41fbd2f60bf14a5"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fd567d8b0fa3361c93c7637cc21d7d67b06d74c53975203b261f6c8601e88f5"
 dependencies = [
  "log",
  "quick-xml 0.35.0",
@@ -1408,8 +1409,9 @@ dependencies = [
 
 [[package]]
 name = "shared-mime-embedded"
-version = "0.1.0-alpha1"
-source = "git+https://github.com/mdekstrand/shared-mime#9c772098f08ee30e5ee00e30e41fbd2f60bf14a5"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2d24a23eecfd9a816b1092eba17b129d752cf96a74632fee5ce33dc22d673c6"
 dependencies = [
  "anyhow",
  "log",
