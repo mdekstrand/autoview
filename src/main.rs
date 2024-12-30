@@ -16,6 +16,7 @@ use styling::stylesheet::StyleSheet;
 
 mod backends;
 mod interface;
+pub mod programs;
 mod styling;
 pub mod views;
 
@@ -145,7 +146,12 @@ fn main() -> Result<()> {
                     debug!("meta: {:?}", meta);
                     meta.render(&styles, stdout())?;
                 }
-                _ => todo!(),
+                ViewType::Full => {
+                    back.full_view(&request)?;
+                }
+                ViewType::Head => {
+                    back.head_view(&request)?;
+                }
             }
         }
     }

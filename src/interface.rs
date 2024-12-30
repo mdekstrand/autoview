@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use colorchoice::ColorChoice;
 use thiserror::Error;
 
+use crate::programs::ProgramError;
 use crate::views::meta::FileMetaDisplay;
 
 /// Request for speed of operations.
@@ -42,6 +43,8 @@ pub enum ViewError {
     IO(#[from] io::Error),
     #[error("Wrapped error: {0}")]
     Wrapped(Box<dyn Error + Send + Sync>),
+    #[error("external program error: {0}")]
+    External(#[from] ProgramError),
     #[error("view error: {0}")]
     Unspecified(String),
 }
@@ -88,4 +91,10 @@ pub trait FileViewer {
 
     /// Get the metadata from this backend.
     fn meta_view(&self, req: &FileRequest) -> Result<FileMetaDisplay, ViewError>;
+
+    /// Display the first lines of this file.
+    fn head_view(&self, req: &FileRequest) -> Result<(), ViewError>;
+
+    /// Display this file.
+    fn full_view(&self, req: &FileRequest) -> Result<(), ViewError>;
 }
