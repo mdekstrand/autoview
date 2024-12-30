@@ -39,6 +39,9 @@ bat = { version = "^0.24", default-features = false, features = [
   "regex-onig",
   "paging",
 ] }
+image = { version = "^0.25", default-features = false, features = [
+  "default-formats",
+] }
 
 [features]
 gpl = []
